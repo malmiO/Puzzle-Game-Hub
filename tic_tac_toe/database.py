@@ -7,7 +7,11 @@ from sqlalchemy.exc import SQLAlchemyError, OperationalError, ProgrammingError
 DB_CONFIG = {
     'host': 'localhost',
     'user': 'root',
+<<<<<<< HEAD
     'password': '',  
+=======
+    'password': '',  # Update with your MySQL password
+>>>>>>> 3cb880adf3734591282c92a576a598322d3c2f62
     'database': 'tictactoe'
 }
 
