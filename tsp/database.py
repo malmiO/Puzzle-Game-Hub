@@ -38,7 +38,11 @@ class Database:
             cursor = self.connection.cursor()
 
             cursor.execute("""
+<<<<<<< HEAD
                 CREATE TABLE IF NOT EXISTS tsp_game_results (
+=======
+                CREATE TABLE IF NOT EXISTS game_results (
+>>>>>>> c9287701bef99bcb586a58d27c077d1da6ced8f3
                     game_id INT AUTO_INCREMENT PRIMARY KEY,
                     player_name VARCHAR(50) NOT NULL,
                     home_city CHAR(1) NOT NULL,
@@ -53,12 +57,20 @@ class Database:
             """)
 
             cursor.execute("""
+<<<<<<< HEAD
                 CREATE TABLE IF NOT EXISTS tsp_algorithm_performance (
+=======
+                CREATE TABLE IF NOT EXISTS algorithm_performance (
+>>>>>>> c9287701bef99bcb586a58d27c077d1da6ced8f3
                     performance_id INT AUTO_INCREMENT PRIMARY KEY,
                     game_id INT NOT NULL,
                     algorithm_name VARCHAR(20) NOT NULL,
                     execution_time FLOAT NOT NULL,
+<<<<<<< HEAD
                     FOREIGN KEY (game_id) REFERENCES tsp_game_results(game_id)
+=======
+                    FOREIGN KEY (game_id) REFERENCES game_results(game_id)
+>>>>>>> c9287701bef99bcb586a58d27c077d1da6ced8f3
                 )
             """)
 
@@ -81,7 +93,11 @@ class Database:
             cursor = self.connection.cursor()
             selected_cities_json = json.dumps(list(selected_cities) if selected_cities else [])
             query = """
+<<<<<<< HEAD
                 INSERT INTO tsp_game_results (
+=======
+                INSERT INTO game_results (
+>>>>>>> c9287701bef99bcb586a58d27c077d1da6ced8f3
                     player_name, home_city, selected_cities,
                     user_path, user_distance, is_optimal,
                     best_path, best_distance
@@ -114,7 +130,11 @@ class Database:
         try:
             cursor = self.connection.cursor()
             query = """
+<<<<<<< HEAD
                 INSERT INTO tsp_algorithm_performance (
+=======
+                INSERT INTO algorithm_performance (
+>>>>>>> c9287701bef99bcb586a58d27c077d1da6ced8f3
                     game_id, algorithm_name, execution_time
                 ) VALUES (%s, %s, %s)
             """

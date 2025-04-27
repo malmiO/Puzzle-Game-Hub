@@ -457,8 +457,13 @@ elif st.session_state.page == "algorithm_performance":
         # Query the last 10 game rounds
         query = """
             SELECT ap.algorithm_name, ap.execution_time, gr.timestamp
+<<<<<<< HEAD
             FROM tsp_algorithm_performance ap
             JOIN tsp_game_results gr ON ap.game_id = gr.game_id
+=======
+            FROM algorithm_performance ap
+            JOIN game_results gr ON ap.game_id = gr.game_id
+>>>>>>> c9287701bef99bcb586a58d27c077d1da6ced8f3
             ORDER BY gr.timestamp DESC
             LIMIT 30
         """
@@ -505,7 +510,11 @@ elif st.session_state.page == "leaderboard":
                 COUNT(*) as optimal_count, 
                 MIN(user_distance) as best_distance,
                 MAX(timestamp) as last_played
+<<<<<<< HEAD
             FROM tsp_game_results
+=======
+            FROM game_results
+>>>>>>> c9287701bef99bcb586a58d27c077d1da6ced8f3
             WHERE is_optimal = TRUE
             AND player_name IS NOT NULL AND player_name != ''
             GROUP BY player_name
