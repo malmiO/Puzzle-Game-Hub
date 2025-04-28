@@ -12,19 +12,16 @@ def solve_hanoi_recursive(n, source, auxiliary, destination):
         moves.append(f"{source}->{destination}")
         hanoi(n-1, auxiliary, source, destination)
     
-    start_time = time.perf_counter()  
+    start_time = time.time()
     hanoi(n, source, auxiliary, destination)
-    end_time = time.perf_counter()
+    end_time = time.time()
     
-    # Ensure time is never exactly zero
-    execution_time = max(end_time - start_time, 0.000001)
-    
-    return moves, execution_time
+    return moves, end_time - start_time
 
 # Classic 3-peg Tower of Hanoi iterative solution
 def solve_hanoi_iterative(n, source, auxiliary, destination):
     moves = []
-    start_time = time.perf_counter()
+    start_time = time.time()
     
     # If n is even, swap auxiliary and destination
     if n % 2 == 0:
@@ -35,27 +32,25 @@ def solve_hanoi_iterative(n, source, auxiliary, destination):
     for i in range(1, total_moves + 1):
         if i % 3 == 1:
             # Move between source and destination
-            # Check which direction is valid
-            if len(moves) == 0 or (len(moves[-1].split('->')[0]) > 0 and moves[-1].split('->')[0] == destination):
+            if not moves or moves[-1].startswith(destination) and moves[-1].endswith(source):
                 moves.append(f"{source}->{destination}")
             else:
                 moves.append(f"{destination}->{source}")
         elif i % 3 == 2:
             # Move between source and auxiliary
-            if len(moves) == 0 or (len(moves[-1].split('->')[0]) > 0 and moves[-1].split('->')[0] == auxiliary):
+            if not moves or moves[-1].startswith(auxiliary) and moves[-1].endswith(source):
                 moves.append(f"{source}->{auxiliary}")
             else:
                 moves.append(f"{auxiliary}->{source}")
         else:
             # Move between auxiliary and destination
-            if len(moves) == 0 or (len(moves[-1].split('->')[0]) > 0 and moves[-1].split('->')[0] == destination):
+            if not moves or moves[-1].startswith(destination) and moves[-1].endswith(auxiliary):
                 moves.append(f"{auxiliary}->{destination}")
             else:
                 moves.append(f"{destination}->{auxiliary}")
     
-    end_time = time.perf_counter()
-    execution_time = max(end_time - start_time, 0.000001)
-    return moves, execution_time
+    end_time = time.time()
+    return moves, end_time - start_time
 
 # Frame-Stewart algorithm for 4 pegs
 def solve_frame_stewart(n, source, aux1, aux2, destination):
