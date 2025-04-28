@@ -60,6 +60,12 @@ def make_move_callback():
     source = st.session_state.source_peg
     destination = st.session_state.destination_peg
     
+    # Check if the player has already used all committed moves
+    if st.session_state.move_count >= st.session_state.committed_moves:
+        st.session_state.move_error = "You've used all your committed moves! Game over."
+        st.session_state.game_lost = True
+        return
+    
     if source == destination:
         st.session_state.move_error = "Source and destination pegs cannot be the same!"
         return
@@ -73,6 +79,10 @@ def make_move_callback():
         # Check if the game is solved
         if is_solved(st.session_state.game_state, st.session_state.disk_count):
             st.session_state.game_solved = True
+        # Check if player has used all moves without solving
+        elif st.session_state.move_count >= st.session_state.committed_moves:
+            st.session_state.move_error = "You've used all your committed moves but didn't solve the puzzle. Game over!"
+            st.session_state.game_lost = True
     else:
         st.session_state.move_error = "Invalid move! Remember, you cannot place a larger disk on a smaller one."
 
@@ -93,6 +103,9 @@ def replay_move_sequence():
         if is_solved(st.session_state.game_state, st.session_state.disk_count):
             # Keep success state but stop replaying
             st.session_state.replay_complete = True
+        else:
+            # The solution didn't work
+            st.session_state.replay_error = "Your solution didn't solve the puzzle within your committed moves!"
         return
     
     # Apply the current move
@@ -121,8 +134,8 @@ def replay_move_sequence():
 # Function to process sequence submission
 def submit_solution():
     moves = st.session_state.solution_sequence.split(',')
-    if len(moves) != st.session_state.move_count_input:
-        st.session_state.solution_error = f"You specified {st.session_state.move_count_input} moves but provided {len(moves)} moves!"
+    if len(moves) > st.session_state.committed_moves:
+        st.session_state.solution_error = f"You provided {len(moves)} moves but you committed to only {st.session_state.committed_moves} moves!"
         return
     
     # Reset game state and apply moves to test validity
@@ -159,21 +172,65 @@ def submit_solution():
             # Trigger the first move in the sequence
             st.rerun()
         else:
-            st.session_state.solution_error = "Your solution does not solve the puzzle!"
+            st.session_state.solution_error = "Your solution does not solve the puzzle within your committed moves!"
+
+# Generate the initial disk count before committing to moves
+def generate_game_parameters():
+    # Generate random disk count between 5 and 10
+    disk_count = random.randint(5, 10)
+    st.session_state.disk_count = disk_count
+    st.session_state.peg_count = st.session_state.peg_selection
+    st.session_state.disk_count_generated = True
+    
+    # Calculate optimal moves, but don't show to user
+    if st.session_state.peg_count == 3:
+        st.session_state.optimal_moves, _ = solve_hanoi_recursive(disk_count, 'A', 'B', 'C')
+    else:
+        st.session_state.optimal_moves, _ = solve_frame_stewart(disk_count, 'A', 'B', 'C', 'D')
+    
+    st.success(f"Game parameters generated: {disk_count} disks with {st.session_state.peg_count} pegs.")
+
+# Function to set up game with committed move count
+def setup_game():
+    # Store player's committed move count
+    st.session_state.committed_moves = st.session_state.move_commitment
+    
+    # Use the previously generated disk count
+    disk_count = st.session_state.disk_count
+    
+    # Initialize the game state
+    st.session_state.game_state = init_game_state(disk_count)
+    st.session_state.game_active = True
+    st.session_state.move_count = 0
+    st.session_state.moves_made = []
+    st.session_state.move_sequence = ""
+    st.session_state.move_error = None
+    st.session_state.game_solved = False
+    st.session_state.game_lost = False
+    st.session_state.is_replaying = False
+    st.session_state.replay_complete = False
+    st.session_state.solution_success = False
+    st.session_state.setup_complete = True
+    
+    st.success(f"Game started with {disk_count} disks and {st.session_state.peg_count} pegs! You committed to solving it in {st.session_state.committed_moves} moves.")
 
 # Main application
 def main():
-    st.set_page_config(page_title="Tower of Hanoi Game", layout="wide")
+    st.set_page_config(page_title="Tower of Hanoi Challenge", layout="wide")
     
     # Initialize database
     init_db()
     
     # App title
-    st.title("Tower of Hanoi Game")
+    st.title("Tower of Hanoi Challenge")
     
     # Initialize session state variables
     if 'game_active' not in st.session_state:
         st.session_state.game_active = False
+    if 'setup_complete' not in st.session_state:
+        st.session_state.setup_complete = False
+    if 'disk_count_generated' not in st.session_state:
+        st.session_state.disk_count_generated = False
     if 'disk_count' not in st.session_state:
         st.session_state.disk_count = 0
     if 'game_state' not in st.session_state:
@@ -196,6 +253,10 @@ def main():
         st.session_state.move_error = None
     if 'game_solved' not in st.session_state:
         st.session_state.game_solved = False
+    if 'game_lost' not in st.session_state:
+        st.session_state.game_lost = False
+    if 'committed_moves' not in st.session_state:
+        st.session_state.committed_moves = 0
     if 'player_name' not in st.session_state:
         st.session_state.player_name = "Player"
     
@@ -226,7 +287,7 @@ def main():
         source = st.query_params['source'][0]
         destination = st.query_params['destination'][0]
         
-        if source and destination and st.session_state.game_active:
+        if source and destination and st.session_state.game_active and not st.session_state.game_lost:
             st.session_state.source_peg = source
             st.session_state.destination_peg = destination
             make_move_callback()
@@ -234,7 +295,7 @@ def main():
     # Handle game solved state that happened through drag and drop
     if st.session_state.game_solved and st.session_state.game_active and not st.session_state.is_replaying:
         st.balloons()
-        st.success(f"Congratulations! You solved the puzzle in {st.session_state.move_count} moves!")
+        st.success(f"Congratulations! You solved the puzzle in {st.session_state.move_count} moves out of your committed {st.session_state.committed_moves}!")
         
         # Get player name from session state - ensure it's not empty
         player_name = st.session_state.player_name if st.session_state.player_name else "Anonymous"
@@ -250,43 +311,48 @@ def main():
     if menu == "Play Tower of Hanoi":
         st.header("Play Tower of Hanoi")
         
-        # Game setup if not replaying
-        if not st.session_state.is_replaying:
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                # Store the player name in session state when entered
-                player_name = st.text_input("Your Name", value=st.session_state.player_name, key="name_input")
-                st.session_state.player_name = player_name  # Update session state with latest input
-            
-            with col2:
-                peg_count = st.radio("Number of Pegs", [3, 4], key="peg_selection")
-            
-            with col3:
-                if st.button("Start New Game", key="start_game_1"):
-                    # Generate random disk count between 5 and 10
-                    disk_count = random.randint(5, 10)
-                    st.session_state.disk_count = disk_count
-                    st.session_state.peg_count = peg_count
-                    st.session_state.game_state = init_game_state(disk_count)
-                    st.session_state.game_active = True
-                    st.session_state.move_count = 0
-                    st.session_state.moves_made = []
-                    st.session_state.move_sequence = ""
-                    st.session_state.move_error = None
-                    st.session_state.game_solved = False
-                    st.session_state.is_replaying = False
-                    st.session_state.replay_complete = False
-                    st.session_state.solution_success = False
+        # Two-step game setup process
+        if not st.session_state.game_active:
+            # Step 1: Set up player name and pegs, generate disk count
+            if not st.session_state.disk_count_generated:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Store the player name in session state when entered
+                    player_name = st.text_input("Your Name", value=st.session_state.player_name, key="name_input")
+                    st.session_state.player_name = player_name  # Update session state with latest input
                     
-                    # Calculate optimal moves
-                    if peg_count == 3:
-                        st.session_state.optimal_moves, _ = solve_hanoi_recursive(disk_count, 'A', 'B', 'C')
-                    else:
-                        st.session_state.optimal_moves, _ = solve_frame_stewart(disk_count, 'A', 'B', 'C', 'D')
+                    # Number of pegs selection
+                    peg_count = st.radio("Number of Pegs", [3, 4], key="peg_selection_input")
+                    st.session_state.peg_selection = peg_count
+                
+                with col2:
+                    st.write("**First, we'll generate the disk count for your game.**")
                     
-                    st.success(f"Started a new game with {disk_count} disks and {peg_count} pegs!")
+                    # Generate disk count button
+                    if st.button("Generate Disk Count", key="generate_disk_count"):
+                        generate_game_parameters()
+            
+            # Step 2: Show disk count and ask for move commitment
+            elif st.session_state.disk_count_generated and not st.session_state.setup_complete:
+                st.info(f"Game with {st.session_state.disk_count} disks and {st.session_state.peg_count} pegs")
+                
+                # Player commits to a number of moves
+                st.write("**Now commit to solving the puzzle with a specific number of moves:**")
+                st.write("(You won't be able to change this after starting!)")
+                
+                # Let player choose any number of moves
+                move_commitment = st.number_input("Number of Moves", 
+                                                min_value=1, 
+                                                value=20, 
+                                                key="move_commitment_input")
+                st.session_state.move_commitment = move_commitment
+                
+                # Start button
+                if st.button("Start Game With Commitment", key="start_game_commitment"):
+                    setup_game()
         
+        # Display game if active
         if st.session_state.game_active:
             # Display replay status if replaying
             if st.session_state.is_replaying:
@@ -300,8 +366,12 @@ def main():
             
             # Display game info
             st.write(f"Current game: {st.session_state.disk_count} disks with {st.session_state.peg_count} pegs")
-            st.write(f"Minimum moves required: {len(st.session_state.optimal_moves)}")
-            st.write(f"Moves made so far: {st.session_state.move_count}")
+            st.write(f"**You committed to solving this in {st.session_state.committed_moves} moves**")
+            st.write(f"Moves made so far: {st.session_state.move_count} / {st.session_state.committed_moves}")
+            
+            # Progress bar for moves
+            move_progress = st.session_state.move_count / st.session_state.committed_moves
+            st.progress(move_progress)
             
             # Display the move sequence
             if st.session_state.moves_made:
@@ -310,12 +380,23 @@ def main():
             # Display the game board with drag and drop enabled
             render_game_board(st.session_state.game_state, st.session_state.disk_count, st.session_state.peg_count)
             
-            # Display any move errors
+            # Display any move errors or game lost state
             if st.session_state.move_error:
                 st.error(st.session_state.move_error)
             
-            # If not replaying, show the move controls
-            if not st.session_state.is_replaying:
+            if st.session_state.game_lost:
+                st.error(f"Game Over! You failed to solve the puzzle in your committed {st.session_state.committed_moves} moves.")
+                
+                # Add option to start a new game after losing
+                if st.button("Start New Game", key="start_game_after_loss"):
+                    st.session_state.game_active = False
+                    st.session_state.setup_complete = False
+                    st.session_state.disk_count_generated = False
+                    st.session_state.game_lost = False
+                    st.rerun()
+            
+            # If not replaying and not lost, show the move controls
+            if not st.session_state.is_replaying and not st.session_state.game_lost:
                 # Move input (as alternative to drag and drop)
                 st.subheader("Make a Move")
                 col1, col2, col3 = st.columns(3)
@@ -333,26 +414,14 @@ def main():
                 
                 # Option to enter full move sequence
                 st.subheader("Enter Full Solution")
-                col1, col2 = st.columns(2)
                 
-                with col1:
-                    move_count = st.number_input("Number of Moves", min_value=1, value=len(st.session_state.optimal_moves), key="move_count_input_field")
-                
-                with col2:
-                    # Use the generated sequence as a default if available
-                    default_sequence = st.session_state.move_sequence if st.session_state.move_sequence else ""
-                    move_sequence = st.text_input("Move Sequence (e.g., A->B,B->C,A->C)", value=default_sequence, key="move_sequence_input")
+                # Use the generated sequence as a default if available
+                default_sequence = st.session_state.move_sequence if st.session_state.move_sequence else ""
+                move_sequence = st.text_input(f"Move Sequence (e.g., A->B,B->C,A->C) - Max {st.session_state.committed_moves} moves", 
+                                            value=default_sequence, key="move_sequence_input")
                 
                 # Add state variables for sequence submission
-                if 'solution_sequence' not in st.session_state:
-                    st.session_state.solution_sequence = move_sequence
-                else:
-                    st.session_state.solution_sequence = move_sequence
-                    
-                if 'move_count_input' not in st.session_state:
-                    st.session_state.move_count_input = move_count
-                else:
-                    st.session_state.move_count_input = move_count
+                st.session_state.solution_sequence = move_sequence
                     
                 if 'solution_error' not in st.session_state:
                     st.session_state.solution_error = None
@@ -367,19 +436,11 @@ def main():
                 if st.session_state.solution_error:
                     st.error(st.session_state.solution_error)
                     st.session_state.solution_error = None
-                
-                # Get a hint
-                if st.button("Get Hint", key="get_hint_button"):
-                    if st.session_state.move_count < len(st.session_state.optimal_moves):
-                        hint = st.session_state.optimal_moves[st.session_state.move_count]
-                        st.info(f"Hint: Try moving from {hint.split('->')[0]} to {hint.split('->')[1]}")
-                    else:
-                        st.info("You've already made more moves than the optimal solution!")
             
             # If replay is complete, show success message
             if st.session_state.replay_complete:
                 st.balloons()
-                st.success(f"Your solution is correct! Completed in {st.session_state.move_count} moves.")
+                st.success(f"Your solution is correct! Completed in {st.session_state.move_count} moves out of your committed {st.session_state.committed_moves}.")
                 
                 # Get player name from session state - ensure it's not empty
                 player_name = st.session_state.player_name if st.session_state.player_name else "Anonymous"
@@ -389,8 +450,10 @@ def main():
                                  st.session_state.move_count, st.session_state.move_sequence)
                 
                 # Add a button to start a new game
-                if st.button("Start New Game", key="start_game_2"):
+                if st.button("Start New Game", key="start_game_after_win"):
                     st.session_state.game_active = False
+                    st.session_state.setup_complete = False
+                    st.session_state.disk_count_generated = False
                     st.session_state.replay_complete = False
                     st.rerun()
     
