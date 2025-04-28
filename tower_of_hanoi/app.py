@@ -44,11 +44,8 @@ def compare_algorithms(player_name, disk_count, moves_count, move_sequence):
     save_result("Algorithm", disk_count, len(iterative_moves), 
                ",".join(iterative_moves), "Iterative", iterative_time)
     
-    # Check if session_state has peg_count attribute before using it
-    peg_count = getattr(st.session_state, 'peg_count', 3)
-    
     # If 4 pegs were used, also compare with Frame-Stewart
-    if peg_count == 4:
+    if st.session_state.peg_count == 4:
         fs_moves, fs_time = solve_frame_stewart(disk_count, 'A', 'B', 'C', 'D')
         st.write(f"Frame-Stewart algorithm (4 pegs) solved it in {len(fs_moves)} moves in {fs_time:.6f} seconds")
         
@@ -57,6 +54,7 @@ def compare_algorithms(player_name, disk_count, moves_count, move_sequence):
                    "Player Solution (4 pegs)", 0)
         save_result("Algorithm", disk_count, len(fs_moves), 
                    ",".join(fs_moves), "Frame-Stewart (4 pegs)", fs_time)
+
 # Function to handle individual move using callbacks
 def make_move_callback():
     source = st.session_state.source_peg
