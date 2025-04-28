@@ -47,7 +47,7 @@ def validate_name(name):
 def validate_city_selection(selected_cities, home_city):
     """Validate city selection"""
     if not selected_cities:
-        return "Please select at least one city to visit"
+        return "Please select cities to visit"
     if home_city in selected_cities:
         return "Home city should not be in selected cities"
     if len(selected_cities) < 3:
@@ -94,7 +94,7 @@ def validate_user_path(user_path, home_city, selected_cities):
         city_counts[city] = city_counts.get(city, 0) + 1
         if city_counts[city] > 1:
             return f"City {city} is visited more than once"
-    
+
     return None
 
 # --- Page Navigation Functions ---
@@ -250,7 +250,7 @@ elif st.session_state.page == "select_cities":
                 st.session_state.page = "path_game"
                 st.rerun()
     else:
-        st.info("Please select at least one city to continue.")
+        st.info("Please select cities to continue.")
 
 # --- Page: Path Game ---
 elif st.session_state.page == "path_game":

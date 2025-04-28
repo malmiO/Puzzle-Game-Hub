@@ -20,6 +20,10 @@ init_db()
 
 def handle_player_answer(player_name, current_solution):
     try:
+        # Ensure correct input
+        if not player_name.strip():
+            raise ValueError("Player name cannot be empty or just spaces.")
+        
         if count_queens() < 8:
             st.error("Not enough queens placed! You need to place all 8 queens.")
             return
@@ -36,15 +40,27 @@ def handle_player_answer(player_name, current_solution):
             st.warning("This solution has already been recognized by another player. Try a new one.")
             return
 
-        save_player_answer(player_name, current_solution)
-        st.success(f"🎉 Congratulations {player_name}! You've added a new unique solution.")
+         # Attempt to save the solution
+        try:
+            save_player_answer(player_name, current_solution)
+            st.success(f"🎉 Congratulations {player_name}! You've added a new unique solution.")
+        except mysql.connector.Error as db_error:
+            st.error(f"Database error occurred while saving your answer: {db_error}")
+            print(f"Database error: {db_error}")
+        except Exception as e:
+            st.error(f"An unexpected error occurred while saving your solution: {e}")
+            print(f"Error: {e}")
 
         if count_unique_player_solutions() >= 92:
             reset_player_solutions()
             st.info("🎯 All 92 unique solutions have been found! The board has been reset for a new round of discovery.")
+
+    except ValueError as ve:
+        st.warning(f"Validation error: {ve}")
+        print(f"Validation error: {ve}")
     except Exception as e:
         st.error(f"An unexpected error occurred while handling your solution: {e}")
-        print(f"Error: {e}")
+        print(f"Unexpected error: {e}")
 
 def main():
     st.set_page_config(page_title="Eight Queens Puzzle", layout="centered")
@@ -137,7 +153,7 @@ def main():
                         st.table(df)
                 except Exception as e:
                     st.error(f"An error occurred while retrieving saved results: {e}")
-                    print(f"Error retrieving results: {e}")
+                    print(f"Error retrieving results: {e}")        
 
         elif choice == "Play Game":
             if "play_game_loaded" not in st.session_state or not st.session_state.play_game_loaded:
@@ -151,26 +167,82 @@ def main():
 
             if st.session_state.warning_shown:
                 st.warning("You can only place up to 8 queens on the board!")
+            
+            # Draw the chessboard
+            chessboard_html = """
+            <div style='
+                display: flex; 
+                justify-content: center; 
+                margin-bottom: 20px;
+            '>
+                <div style='
+                    display: grid; 
+                    grid-template-columns: repeat(8, 60px); 
+                    grid-template-rows: repeat(8, 60px); 
+                    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                '>
+            """
 
-            cols = st.columns(8)
             for row in range(8):
                 for col in range(8):
-                    with cols[col]:
-                        if st.button("♛" if st.session_state.board[row][col] else " ", key=f"btn_{row}_{col}"):
-                            place_queen(row, col)
+                    color = "#b58863" if (row + col) % 2 == 0 else "#f0d9b5"  # Light or dark square
+                    content = "♛" if st.session_state.board[row][col] else ""
+                    chessboard_html += f"""
+                        <div style='
+                            background: {color}; 
+                            width: 60px; 
+                            height: 60px; 
+                            display: flex; 
+                            align-items: center; 
+                            justify-content: center;
+                            font-size: 36px;
+                        '>{content}</div>
+                    """
+
+            chessboard_html += """
+                </div>
+            </div>
+            """
+
+            import streamlit.components.v1 as components
+            components.html(chessboard_html, height=500)
+
+            st.markdown("---")
+
+            
+            # Selection inputs with number_input in the same row
+            st.markdown("### Place/Remove a Queen")
+            col_row, col_col = st.columns(2)
+
+            with col_row:
+                x = st.number_input("Enter Row (1-8)", min_value=1, max_value=8, step=1, key="input_row")
+            with col_col:
+                y = st.number_input("Enter Column (1-8)", min_value=1, max_value=8, step=1, key="input_col")
+
+            if st.button("Place Queen"):
+                if count_queens() < 8:
+                    adjusted_x = x - 1  # Convert to 0-7 indexing
+                    adjusted_y = y - 1
+                    place_queen(adjusted_x, adjusted_y)
+                    st.rerun()
+                else:
+                    st.warning("You can only place up to 8 queens!")
+
+            st.markdown("---")
 
             player_name = st.text_input("Enter your name")
             if st.button("Check Solution"):
                 if not player_name.strip():
                     st.warning("Please enter your name before checking the solution.")
                 else:
-                    current_solution = [row.index(1) for row in st.session_state.board]
+                    current_solution = [row.index(1) if 1 in row else -1 for row in st.session_state.board]
                     handle_player_answer(player_name, current_solution)
 
             if st.button("Restart"):
                 init_game_state(force=True)
                 st.session_state.play_game_loaded = True
                 st.rerun()
+                
 
         elif choice == "Leadership Board":
             try:

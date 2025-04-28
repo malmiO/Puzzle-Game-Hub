@@ -1,13 +1,21 @@
 import time
 import threading
-from db import save_to_db, solution_exists  # Assuming save_to_db is modified to work with MySQL
+from db import save_to_db, solution_exists
 
-# Helper function to check if placing a queen is safe
+class SolverError(Exception):
+    """Custom exception class for solver-specific errors."""
+    pass
+
 def is_safe(board, row, col):
     """
     Check if placing a queen at position (row, col) is safe.
-    A position is safe if no other queen threatens it in the same column or diagonal.
     """
+    if not isinstance(board, list) or not isinstance(row, int) or not isinstance(col, int):
+        raise ValueError("Invalid input types to is_safe().")
+
+    if row < 0 or row >= 8 or col < 0 or col >= 8:
+        raise ValueError(f"Row and column must be between 0 and 7. Got row={row}, col={col}.")
+
     for i in range(row):
         if board[i] == col or \
            board[i] - i == col - row or \
@@ -15,77 +23,110 @@ def is_safe(board, row, col):
             return False
     return True
 
-# Recursive function to solve the n-queens puzzle
 def solve_n_queens(board, row, solutions):
     """
     Recursive backtracking function to solve the N-Queens problem.
-    Adds a solution to the list once a valid configuration is found.
     """
-    if row == 8:  # All queens are placed, save the solution
+    if not isinstance(board, list) or not isinstance(row, int) or not isinstance(solutions, list):
+        raise ValueError("Invalid arguments passed to solve_n_queens.")
+
+    if row == 8:
         solutions.append(board[:])
         return
-    for col in range(8):
-        if is_safe(board, row, col):
-            board[row] = col  # Place queen at (row, col)
-            solve_n_queens(board, row + 1, solutions)  # Recurse for the next row
 
-# Sequential solver
+    for col in range(8):
+        try:
+            if is_safe(board, row, col):
+                board[row] = col
+                solve_n_queens(board, row + 1, solutions)
+        except Exception as e:
+            raise SolverError(f"Error while solving N-Queens at row {row}, col {col}: {str(e)}") from e
+
 def sequential_solver():
     """
-    Solves the N-Queens problem sequentially (without threads).
-    This method performs the solution search one step at a time.
+    Solves the N-Queens problem sequentially.
     """
     try:
-        if solution_exists("Sequential"):  # Check if the sequential solution already exists in the database
-            return None, None  # Return None, None to indicate that results already exist
+        if solution_exists("Sequential"):
+            print("Sequential solution already exists in database. Skipping computation.")
+            return None, None
 
-        solutions = []  # List to store all valid solutions
-        board = [-1] * 8  # Initialize the board with no queens placed
-        start_time = time.time()  # Start the timer to calculate execution time
-        solve_n_queens(board, 0, solutions)  # Start solving the N-Queens problem
-        end_time = time.time()  # End the timer after solving
+        solutions = []
+        board = [-1] * 8
+        start_time = time.time()
+        solve_n_queens(board, 0, solutions)
+        end_time = time.time()
 
-        time_taken = end_time - start_time  # Calculate the time taken to solve the problem
-        save_to_db("Sequential", time_taken, solutions)  # Save results to the database
+        time_taken = end_time - start_time
+
+        if not solutions:
+            raise SolverError("Sequential solver found no solutions.")
+
+        save_to_db("Sequential", time_taken, solutions)
         return time_taken, solutions
-    except Exception as e:
-        print(f"Error in sequential solver: {e}")
+
+    except SolverError as se:
+        print(f"SolverError in sequential_solver: {se}")
         return None, None
 
-# Threaded solver
+    except Exception as e:
+        print(f"Unexpected error in sequential_solver: {e}")
+        return None, None
+
 def threaded_solver():
     """
-    Solves the N-Queens problem using threading (parallel processing).
-    Each thread solves a different portion of the problem.
+    Solves the N-Queens problem using threading.
     """
     try:
-        if solution_exists("Threaded"):  # Check if the threaded solution already exists in the database
-            return None, None  # Return None, None to indicate that results already exist
+        if solution_exists("Threaded"):
+            print("Threaded solution already exists in database. Skipping computation.")
+            return None, None
 
-        solutions = []  # List to store all valid solutions
-        board = [-1] * 8  # Initialize the board with no queens placed
-        start_time = time.time()  # Start the timer to calculate execution time
+        solutions = []
+        lock = threading.Lock()
+        threads = []
 
-        # Thread function to solve a portion of the problem from a given starting row
-        def thread_solve(row_start):
-            local_solutions = []  # Local list of solutions for this thread
-            solve_n_queens(board, row_start, local_solutions)  # Solve for the given starting row
-            solutions.extend(local_solutions)  # Add the local solutions to the global list
+        def thread_solve(start_col):
+            if not (0 <= start_col <= 7):
+                raise ValueError(f"start_col must be between 0 and 7. Got {start_col}.")
 
-        threads = []  # List to keep track of the threads
-        for i in range(8):  # We spawn 8 threads, each solving a different part of the problem
-            thread = threading.Thread(target=thread_solve, args=(i,))  # Start solving from row i
-            threads.append(thread)  # Add thread to the list
-            thread.start()  # Start the thread
+            local_board = [-1] * 8
+            local_solutions = []
+            try:
+                if is_safe(local_board, 0, start_col):
+                    local_board[0] = start_col
+                    solve_n_queens(local_board, 1, local_solutions)
+                    with lock:
+                        solutions.extend(local_solutions)
+            except Exception as e:
+                raise SolverError(f"Error in thread for start_col={start_col}: {str(e)}") from e
 
-        # Wait for all threads to finish
+        start_time = time.time()
+
+        for col in range(8):
+            try:
+                thread = threading.Thread(target=thread_solve, args=(col,))
+                threads.append(thread)
+                thread.start()
+            except Exception as e:
+                print(f"Failed to start thread for column {col}: {e}")
+
         for thread in threads:
             thread.join()
 
-        end_time = time.time()  # End the timer after all threads are done
-        time_taken = end_time - start_time  # Calculate the time taken to solve the problem
-        save_to_db("Threaded", time_taken, solutions)  # Save results to the database
+        end_time = time.time()
+        time_taken = end_time - start_time
+
+        if not solutions:
+            raise SolverError("Threaded solver found no solutions.")
+
+        save_to_db("Threaded", time_taken, solutions)
         return time_taken, solutions
+
+    except SolverError as se:
+        print(f"SolverError in threaded_solver: {se}")
+        return None, None
+
     except Exception as e:
-        print(f"Error in threaded solver: {e}")
+        print(f"Unexpected error in threaded_solver: {e}")
         return None, None
