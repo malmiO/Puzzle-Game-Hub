@@ -84,18 +84,20 @@ def main():
             if action == "Solve Sequentially":
                 with st.spinner("Solving..."):
                     time_taken, solutions = sequential_solver()
-                    if time_taken is None:
-                        st.warning("The sequential solution already exists.")
-                    else:
+                    if time_taken is not None:
                         st.success(f"Solved in {time_taken:.4f} sec with {len(solutions)} solutions.")
+                    else:
+                        st.error("Solver failed to generate solutions.")
+
 
             elif action == "Solve Using Threads":
                 with st.spinner("Solving with threads..."):
                     time_taken, solutions = threaded_solver()
-                    if time_taken is None:
-                        st.warning("The threaded solution already exists.")
-                    else:
+                    if time_taken is not None:
                         st.success(f"Solved in {time_taken:.4f} sec with {len(solutions)} solutions.")
+                    else:
+                        st.error("Solver failed to generate solutions.")
+
 
             elif action == "Show Saved Results":
                 try:

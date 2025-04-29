@@ -29,7 +29,7 @@ def initialize_scoreboard_table():
             player_name VARCHAR(255) NOT NULL,
             game_name VARCHAR(255) NOT NULL,
             win_count INT NOT NULL DEFAULT 0,
-            UNIQUE KEY unique_player_game (player_name, game_name)
+            UNIQUE KEY unique_player_game (player_name(100), game_name(100))
         )
         """
         cursor.execute(create_table_query)

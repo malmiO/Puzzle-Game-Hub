@@ -17,17 +17,17 @@ def init_db():
     cursor = conn.cursor()
 
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS solutions (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        method VARCHAR(255),
-        time_taken FLOAT,
-        total_solutions INT,
-        solutions TEXT,
-        solutions_hash CHAR(40),
-        created_at DATETIME,
-        CONSTRAINT unique_method_solution UNIQUE (method, solutions_hash)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        CREATE TABLE IF NOT EXISTS solutions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            method VARCHAR(255),
+            time_taken FLOAT,
+            total_solutions INT,
+            solutions TEXT,
+            solutions_hash CHAR(40),
+            created_at DATETIME
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ''')
+
 
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS player_answers (
