@@ -103,7 +103,7 @@ def main():
                         host="localhost",
                         user="root",
                         password="",
-                        database="eight_queens"
+                        database="puzzle_game_hub"
                     )
                     c = conn.cursor()
                     c.execute("SELECT method, time_taken, solutions, created_at FROM solutions ORDER BY id DESC")
@@ -297,7 +297,7 @@ def main():
                     host="localhost",
                     user="root",
                     password="",
-                    database="eight_queens"
+                    database="puzzle_game_hub"
                 )
                 c = conn.cursor()
                 c.execute("SELECT player_name, correct_solution, created_at FROM player_answers WHERE correct_solution IS NOT NULL")

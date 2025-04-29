@@ -130,10 +130,12 @@ def fetch_win_counts():
         # Eight Queens wins
         eq_query = """
         SELECT player_name AS 'Player Name', 'Eight Queens Puzzle' AS 'Game Name', COUNT(*) AS 'Win Count'
-        FROM eight_queens_results
-        WHERE is_valid = TRUE
+        FROM player_answers
+        WHERE correct_solution IS NOT NULL   -- or another condition that marks a correct solution
         GROUP BY player_name
         """
+
+
         
         # Combine results
         queries = [ttt_query, tsp_query, toh_query, kt_query, eq_query]
