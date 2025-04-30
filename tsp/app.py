@@ -454,7 +454,7 @@ elif st.session_state.page == "algorithm_performance":
     """)
 
     try:
-        # Query the last 10 game rounds
+        # Query the last 30 algorithm entries (3 algorithms × 10 rounds)
         query = """
             SELECT ap.algorithm_name, ap.execution_time, gr.timestamp
             FROM tsp_algorithm_performance ap
@@ -468,8 +468,26 @@ elif st.session_state.page == "algorithm_performance":
         cursor.close()
 
         if data:
+            # Create DataFrame from raw data
             df = pd.DataFrame(data)
-            # Create a bar chart
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            df = df.sort_values(by='timestamp', ascending=False)
+
+            # Add Game Round index (latest = highest)
+            df['Round Index'] = df.groupby('timestamp').ngroup()
+            df['Game Round'] = df['Round Index'].max() - df['Round Index']
+
+            # Pivot the DataFrame
+            pivot_df = df.pivot(index='Game Round', columns='algorithm_name', values='execution_time')
+
+            # Rename columns for display
+            pivot_df = pivot_df.rename(columns={
+                'Brute Force': 'Brute Force (seconds)',
+                'Held-Karp': 'Held-Karp (seconds)',
+                'Nearest Neighbor': 'Nearest Neighbor (seconds)'
+            }).reset_index()
+
+            # Display bar chart
             fig = px.bar(
                 df,
                 x="algorithm_name",
@@ -481,13 +499,14 @@ elif st.session_state.page == "algorithm_performance":
             )
             st.plotly_chart(fig)
 
-            # Display raw data
-            st.subheader("Raw Data")
-            st.dataframe(df[["algorithm_name", "execution_time", "timestamp"]])
+            # Display pivoted raw data table
+            st.subheader("Performance by Game Round")
+            st.dataframe(pivot_df)
         else:
             st.warning("No performance data available. Play some games to generate data!")
     except Exception as e:
         st.error(f"Failed to fetch performance data: {e}")
+
 
 # --- Page: Leaderboard ---
 elif st.session_state.page == "leaderboard":
