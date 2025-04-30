@@ -251,7 +251,7 @@ def main():
             try:
                 st.session_state.board = initialize_board()
                 #st.session_state.start_pos = (random.randint(0, 7), random.randint(0, 7))
-                st.session_state.start_pos = (3, 6)
+                st.session_state.start_pos = (3, 4)
                 st.session_state.moves = [st.session_state.start_pos]
                 st.session_state.board[st.session_state.start_pos[0]][st.session_state.start_pos[1]] = 0
                 st.session_state.move_count = 1

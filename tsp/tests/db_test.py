@@ -2,7 +2,9 @@ import unittest
 from unittest.mock import patch, MagicMock
 
 from database import Database
-
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 class TestDatabase(unittest.TestCase):
 
     def setUp(self):

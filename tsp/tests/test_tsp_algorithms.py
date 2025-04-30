@@ -1,7 +1,9 @@
 import unittest
 
 from tsp_algorithms import brute_force_tsp, held_karp_tsp, nearest_neighbor_tsp, run_tsp_algorithms
-
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 class TestTSPAlgorithms(unittest.TestCase):
 
     def setUp(self):
