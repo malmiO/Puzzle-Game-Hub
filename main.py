@@ -146,7 +146,7 @@ games = [
         "category": "Puzzle",
         "difficulty": "Hard",
         "players": "1 Player",
-        "file": "eight_queens/app.py",
+        "file": "eight_queen_puzzle/app.py",
         "seed": 345
     },
     {
